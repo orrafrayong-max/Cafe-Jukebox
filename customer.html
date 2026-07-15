@@ -223,6 +223,94 @@
     border-radius: 8px;
     border-left: 3px solid var(--danger);
   }
+
+  .now-playing-card {
+    background: linear-gradient(135deg, var(--surface2), var(--surface));
+    border: 1px solid rgba(78, 205, 196, 0.25);
+    border-radius: 14px;
+    padding: 14px 16px;
+    margin-bottom: 18px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .now-playing-dot {
+    width: 8px; height: 8px;
+    background: var(--accent);
+    border-radius: 50%;
+    flex-shrink: 0;
+    animation: pulse 1.4s infinite;
+  }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+  .now-playing-info { flex: 1; min-width: 0; }
+  .now-playing-label {
+    font-size: 10px;
+    color: var(--accent);
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .now-playing-title {
+    font-size: 13px;
+    color: var(--text);
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .now-playing-table {
+    font-size: 11px;
+    color: var(--gold);
+    margin-top: 2px;
+  }
+
+  .turn-popup {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,0.75);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 999;
+    padding: 24px;
+  }
+  .turn-popup-card {
+    background: var(--surface);
+    border: 2px solid var(--accent);
+    border-radius: 20px;
+    padding: 32px 24px;
+    text-align: center;
+    max-width: 320px;
+  }
+  .turn-popup-card .icon { font-size: 48px; }
+  .turn-popup-card h3 {
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--accent);
+    margin: 12px 0 8px;
+  }
+  .turn-popup-card p { color: var(--text2); font-size: 13px; line-height: 1.6; }
+  .turn-popup-card button {
+    margin-top: 16px;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px 28px;
+    border-radius: 20px;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+  }
+
+  .history-item {
+    background: var(--surface);
+    border-radius: 10px;
+    padding: 10px 14px;
+    margin-bottom: 8px;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .history-title { font-size: 13px; color: var(--text); }
+  .history-meta { font-size: 11px; color: var(--text2); margin-top: 3px; }
 </style>
 </head>
 <body>
@@ -245,6 +333,17 @@
     <div class="tabs">
       <button class="tab-btn active" id="tabSearch" onclick="switchTab('search')">🔍 ค้นหาเพลง</button>
       <button class="tab-btn" id="tabQueue" onclick="switchTab('queue')">📋 คิวปัจจุบัน</button>
+      <button class="tab-btn" id="tabHistory" onclick="switchTab('history')">🕓 ประวัติ</button>
+    </div>
+
+    <!-- Now Playing -->
+    <div class="now-playing-card" id="nowPlayingCard" style="display:none">
+      <div class="now-playing-dot"></div>
+      <div class="now-playing-info">
+        <div class="now-playing-label">กำลังเล่น</div>
+        <div class="now-playing-title" id="nowPlayingTitle">—</div>
+        <div class="now-playing-table" id="nowPlayingTable"></div>
+      </div>
     </div>
 
     <!-- Search section -->
@@ -268,6 +367,12 @@
       <div id="queueList"><div class="empty">กำลังโหลด...</div></div>
     </div>
 
+    <!-- History section -->
+    <div id="historySection" style="display:none">
+      <div class="label">เพลงที่เล่นไปแล้ว (ล่าสุด 20 เพลง)</div>
+      <div id="historyList"><div class="empty">กำลังโหลด...</div></div>
+    </div>
+
     <!-- Success section -->
     <div id="successSection" style="display:none">
       <div class="success-wrap">
@@ -278,6 +383,16 @@
       </div>
       <button class="btn-outline" onclick="addMore()">+ เพิ่มเพลงอีก</button>
     </div>
+  </div>
+</div>
+
+<!-- Popup แจ้งเตือนเมื่อเพลงตัวเองใกล้ถึงคิว -->
+<div class="turn-popup" id="turnPopup" style="display:none">
+  <div class="turn-popup-card">
+    <div class="icon">🎶</div>
+    <h3>เพลงคุณจะเล่นต่อไป!</h3>
+    <p id="turnPopupText">เตรียมตัวฟังเพลงของคุณได้เลย</p>
+    <button onclick="closeTurnPopup()">รับทราบ</button>
   </div>
 </div>
 
@@ -296,6 +411,7 @@ document.getElementById('maxSongsLabel').textContent = MAX_SONGS_PER_TABLE;
 document.title = `Café Jukebox — โต๊ะ ${tableNumber}`;
 
 let queueCache = [];
+let notifiedSongIds = new Set(); // กันแจ้งเตือนซ้ำในเซสชันเดียวกัน
 
 // ======================================================
 // เช็คว่าร้านเปิด/ปิดรับคำขอ — เช็คตอนโหลด + ทุก 15 วิ
@@ -318,10 +434,13 @@ async function checkSettings() {
 function switchTab(tab) {
   document.getElementById('tabSearch').classList.toggle('active', tab === 'search');
   document.getElementById('tabQueue').classList.toggle('active', tab === 'queue');
+  document.getElementById('tabHistory').classList.toggle('active', tab === 'history');
   document.getElementById('searchSection').style.display = tab === 'search' ? 'block' : 'none';
   document.getElementById('queueSection').style.display = tab === 'queue' ? 'block' : 'none';
+  document.getElementById('historySection').style.display = tab === 'history' ? 'block' : 'none';
   document.getElementById('successSection').style.display = 'none';
   if (tab === 'queue') fetchQueue();
+  if (tab === 'history') fetchHistory();
 }
 
 // ======================================================
@@ -334,7 +453,87 @@ async function fetchQueue() {
     queueCache = data.queue || [];
     renderQueue();
     updateMyCount();
+    checkMyTurn();
   } catch (e) {}
+}
+
+// ======================================================
+// Now Playing — แสดงเพลงที่กำลังเล่นอยู่ในหน้าลูกค้า
+// ======================================================
+async function fetchNowPlaying() {
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getNowPlaying`);
+    const data = await res.json();
+    const card = document.getElementById('nowPlayingCard');
+    if (!data.nowPlaying) {
+      card.style.display = 'none';
+      return;
+    }
+    card.style.display = 'flex';
+    document.getElementById('nowPlayingTitle').textContent = data.nowPlaying.title;
+    document.getElementById('nowPlayingTable').textContent =
+      String(data.nowPlaying.tableNumber) === '0'
+        ? 'เพลย์ลิสต์ร้าน'
+        : `โต๊ะ ${data.nowPlaying.tableNumber}`;
+  } catch (e) {}
+}
+
+// ======================================================
+// แจ้งเตือนเมื่อเพลงของโต๊ะตัวเองใกล้ถึงคิว (ตำแหน่งที่ 1)
+// ======================================================
+function checkMyTurn() {
+  const mySongAtFront = queueCache.find(
+    s => String(s.tableNumber) === String(tableNumber) && s.position === 1
+  );
+  if (mySongAtFront && !notifiedSongIds.has(mySongAtFront.id)) {
+    notifiedSongIds.add(mySongAtFront.id);
+    showTurnPopup(mySongAtFront.title);
+  }
+}
+
+function showTurnPopup(title) {
+  document.getElementById('turnPopupText').textContent =
+    `"${title}" กำลังจะเล่นเป็นเพลงต่อไป เตรียมตัวฟังได้เลย!`;
+  document.getElementById('turnPopup').style.display = 'flex';
+
+  // สั่นมือถือถ้าเบราว์เซอร์รองรับ (ใช้ได้บน Android Chrome, iOS Safari ไม่รองรับ)
+  if (navigator.vibrate) {
+    navigator.vibrate([200, 100, 200]);
+  }
+}
+
+function closeTurnPopup() {
+  document.getElementById('turnPopup').style.display = 'none';
+}
+
+// ======================================================
+// History — เพลงที่เล่นไปแล้ว
+// ======================================================
+async function fetchHistory() {
+  const el = document.getElementById('historyList');
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getHistory`);
+    const data = await res.json();
+    const history = data.history || [];
+
+    if (!history.length) {
+      el.innerHTML = '<div class="empty">ยังไม่มีประวัติเพลง</div>';
+      return;
+    }
+
+    el.innerHTML = history.map(h => {
+      const time = new Date(h.playedAt);
+      const timeStr = time.toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' });
+      const tableLabel = String(h.tableNumber) === '0' ? 'เพลย์ลิสต์ร้าน' : `โต๊ะ ${h.tableNumber}`;
+      return `
+        <div class="history-item">
+          <div class="history-title">${escHtml(h.title)}</div>
+          <div class="history-meta">${tableLabel} · เล่นเมื่อ ${timeStr} น.</div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    el.innerHTML = '<div class="empty">โหลดประวัติไม่สำเร็จ</div>';
+  }
 }
 
 function updateMyCount() {
@@ -471,6 +670,7 @@ async function addSong(videoId, title, thumbnail) {
 
     document.getElementById('searchSection').style.display = 'none';
     document.getElementById('queueSection').style.display = 'none';
+    document.getElementById('historySection').style.display = 'none';
     document.getElementById('successSection').style.display = 'block';
 
     await fetchQueue();
@@ -510,8 +710,10 @@ function escHtml(str) {
 // ---- เริ่มต้น ----
 checkSettings();
 fetchQueue();
+fetchNowPlaying();
 setInterval(checkSettings, 15000);
 setInterval(fetchQueue, 5000);
+setInterval(fetchNowPlaying, 5000);
 </script>
 </body>
 </html>
