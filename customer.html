@@ -37,6 +37,23 @@
     margin-top: 8px;
   }
 
+  .paused-banner {
+    background: rgba(255, 107, 107, 0.12);
+    border: 1px solid var(--danger);
+    border-radius: 14px;
+    padding: 24px 18px;
+    text-align: center;
+    margin-top: 20px;
+  }
+  .paused-banner .icon { font-size: 40px; }
+  .paused-banner h2 {
+    font-size: 17px;
+    font-weight: 500;
+    margin: 12px 0 6px;
+    color: var(--danger);
+  }
+  .paused-banner p { color: var(--text2); font-size: 13px; line-height: 1.6; }
+
   .tabs { display: flex; gap: 8px; margin-bottom: 18px; }
   .tab-btn {
     flex: 1;
@@ -153,9 +170,7 @@
     border-radius: 20px;
     font-weight: 500;
   }
-  .queue-table-tag {
-    color: var(--gold);
-  }
+  .queue-table-tag { color: var(--gold); }
   .vote-btn {
     background: var(--surface2);
     border: 1px solid rgba(255,255,255,0.1);
@@ -219,41 +234,50 @@
     <div class="table-badge" id="tableBadge">โต๊ะที่ ...</div>
   </div>
 
-  <div class="tabs">
-    <button class="tab-btn active" id="tabSearch" onclick="switchTab('search')">🔍 ค้นหาเพลง</button>
-    <button class="tab-btn" id="tabQueue" onclick="switchTab('queue')">📋 คิวปัจจุบัน</button>
+  <!-- Banner แสดงเมื่อร้านปิดรับคำขอ -->
+  <div id="pausedBanner" class="paused-banner" style="display:none">
+    <div class="icon">⏸️</div>
+    <h2>ร้านปิดรับคำขอเพลงชั่วคราว</h2>
+    <p>ขออภัยในความไม่สะดวก กรุณาลองใหม่อีกครั้งภายหลัง<br>ระบบจะเปิดใช้งานอัตโนมัติเมื่อร้านพร้อม</p>
   </div>
 
-  <!-- Search section -->
-  <div id="searchSection">
-    <div class="limit-info">
-      โต๊ะนี้ขอเพลงได้สูงสุด <b id="maxSongsLabel">2</b> เพลง/รอบ —
-      ตอนนี้อยู่ในคิว <b id="myCountLabel">0</b> เพลง
+  <div id="mainContent">
+    <div class="tabs">
+      <button class="tab-btn active" id="tabSearch" onclick="switchTab('search')">🔍 ค้นหาเพลง</button>
+      <button class="tab-btn" id="tabQueue" onclick="switchTab('queue')">📋 คิวปัจจุบัน</button>
     </div>
-    <div class="label">ค้นหาเพลงที่ต้องการ</div>
-    <div class="search-row">
-      <input type="text" id="searchInput" placeholder="ชื่อเพลง หรือ ศิลปิน..." />
-      <button class="btn" id="searchBtn" onclick="searchYouTube()">ค้นหา</button>
-    </div>
-    <div id="errorMsg" class="error-msg" style="display:none"></div>
-    <div id="results"></div>
-  </div>
 
-  <!-- Queue section -->
-  <div id="queueSection" style="display:none">
-    <div class="label">คิวเพลงตอนนี้ — โหวตเพื่อดันเพลงโปรดขึ้นเร็วขึ้น 🚀</div>
-    <div id="queueList"><div class="empty">กำลังโหลด...</div></div>
-  </div>
-
-  <!-- Success section -->
-  <div id="successSection" style="display:none">
-    <div class="success-wrap">
-      <div class="check">✅</div>
-      <h2>เพิ่มเพลงสำเร็จ!</h2>
-      <p id="successMsg">เพลงของคุณถูกเพิ่มในคิวแล้ว</p>
-      <div class="wait-badge" id="waitBadge" style="display:none"></div>
+    <!-- Search section -->
+    <div id="searchSection">
+      <div class="limit-info">
+        โต๊ะนี้ขอเพลงได้สูงสุด <b id="maxSongsLabel">2</b> เพลง/รอบ —
+        ตอนนี้อยู่ในคิว <b id="myCountLabel">0</b> เพลง
+      </div>
+      <div class="label">ค้นหาเพลงที่ต้องการ</div>
+      <div class="search-row">
+        <input type="text" id="searchInput" placeholder="ชื่อเพลง หรือ ศิลปิน..." />
+        <button class="btn" id="searchBtn" onclick="searchYouTube()">ค้นหา</button>
+      </div>
+      <div id="errorMsg" class="error-msg" style="display:none"></div>
+      <div id="results"></div>
     </div>
-    <button class="btn-outline" onclick="addMore()">+ เพิ่มเพลงอีก</button>
+
+    <!-- Queue section -->
+    <div id="queueSection" style="display:none">
+      <div class="label">คิวเพลงตอนนี้ — โหวตเพื่อดันเพลงโปรดขึ้นเร็วขึ้น 🚀</div>
+      <div id="queueList"><div class="empty">กำลังโหลด...</div></div>
+    </div>
+
+    <!-- Success section -->
+    <div id="successSection" style="display:none">
+      <div class="success-wrap">
+        <div class="check">✅</div>
+        <h2>เพิ่มเพลงสำเร็จ!</h2>
+        <p id="successMsg">เพลงของคุณถูกเพิ่มในคิวแล้ว</p>
+        <div class="wait-badge" id="waitBadge" style="display:none"></div>
+      </div>
+      <button class="btn-outline" onclick="addMore()">+ เพิ่มเพลงอีก</button>
+    </div>
   </div>
 </div>
 
@@ -272,7 +296,21 @@ document.getElementById('maxSongsLabel').textContent = MAX_SONGS_PER_TABLE;
 document.title = `Café Jukebox — โต๊ะ ${tableNumber}`;
 
 let queueCache = [];
-let pollTimer = null;
+
+// ======================================================
+// เช็คว่าร้านเปิด/ปิดรับคำขอ — เช็คตอนโหลด + ทุก 15 วิ
+// ======================================================
+async function checkSettings() {
+  try {
+    const res = await fetch(`${SCRIPT_URL}?action=getSettings`);
+    const data = await res.json();
+    const accepting = data.acceptingRequests !== false;
+    document.getElementById('pausedBanner').style.display = accepting ? 'none' : 'block';
+    document.getElementById('mainContent').style.display = accepting ? 'block' : 'none';
+  } catch (e) {
+    // เงียบไว้ ถือว่าเปิดใช้งานตามปกติ
+  }
+}
 
 // ======================================================
 // Tabs
@@ -287,7 +325,7 @@ function switchTab(tab) {
 }
 
 // ======================================================
-// Fetch queue (สำหรับแสดงรายการ + โหวต + นับจำนวนของโต๊ะตัวเอง)
+// Fetch queue
 // ======================================================
 async function fetchQueue() {
   try {
@@ -296,9 +334,7 @@ async function fetchQueue() {
     queueCache = data.queue || [];
     renderQueue();
     updateMyCount();
-  } catch (e) {
-    // เงียบไว้ รอ poll รอบถัดไป
-  }
+  } catch (e) {}
 }
 
 function updateMyCount() {
@@ -423,9 +459,10 @@ async function addSong(videoId, title, thumbnail) {
     const data = await res.json();
 
     if (!data.success) {
-      // ✅ แสดง error จาก backend (limit / duplicate) ตรง ๆ
       errEl.textContent = data.error || 'เพิ่มเพลงไม่สำเร็จ';
       errEl.style.display = 'block';
+      // ถ้าปิดรับคำขอระหว่างนี้พอดี ให้เช็คแบนเนอร์ใหม่ทันที
+      checkSettings();
       return;
     }
 
@@ -436,7 +473,6 @@ async function addSong(videoId, title, thumbnail) {
     document.getElementById('queueSection').style.display = 'none';
     document.getElementById('successSection').style.display = 'block';
 
-    // ดึงคิวใหม่เพื่อหาเวลารอของเพลงที่เพิ่งเพิ่ม
     await fetchQueue();
     const mySong = queueCache.find(s => s.title === title && String(s.tableNumber) === String(tableNumber));
     const waitBadge = document.getElementById('waitBadge');
@@ -471,9 +507,11 @@ function escHtml(str) {
     .replace(/'/g,'&#39;');
 }
 
-// ---- เริ่มต้น: โหลดคิวไว้ล่วงหน้า + poll ทุก 5 วิ (สำหรับ tab คิว) ----
+// ---- เริ่มต้น ----
+checkSettings();
 fetchQueue();
-pollTimer = setInterval(fetchQueue, 5000);
+setInterval(checkSettings, 15000);
+setInterval(fetchQueue, 5000);
 </script>
 </body>
 </html>
